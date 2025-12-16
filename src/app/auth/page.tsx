@@ -93,16 +93,4 @@ export default function AuthCallbackPage() {
     })();
   }, []);
 
-  return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="p-6 bg-white rounded shadow">
-        <h2 className="font-bold mb-2">Auth 콜백 처리</h2>
-        <p>상태: {status}</p>
-        {errorMsg && (
-          <pre className="mt-2 text-sm text-red-600">{errorMsg}</pre>
-        )}
-        <p className="mt-2 text-xs text-gray-500">콘솔 로그도 확인하세요 (F12)</p>
-      </div>
-    </div>
-  );
 }
