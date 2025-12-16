@@ -78,3 +78,73 @@ export const authHelpers = {
     return user;
   }
 };
+
+// 문서(Documents) 관련 함수들
+export const documentHelpers = {
+  // 모든 문서 가져오기
+  getAllDocuments: async () => {
+    const { data, error } = await supabase
+      .from('documents')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  },
+
+  // 특정 문서 가져오기
+  getDocumentById: async (id: string) => {
+    const { data, error } = await supabase
+      .from('documents')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+
+  // 문서 생성
+  createDocument: async (document: {
+    title: string;
+    content: string;
+    thumbnail?: string;
+    user_id?: string;
+  }) => {
+    const { data, error } = await supabase
+      .from('documents')
+      .insert(document)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+
+  // 문서 업데이트
+  updateDocument: async (id: string, updates: {
+    title?: string;
+    content?: string;
+    thumbnail?: string;
+  }) => {
+    const { data, error } = await supabase
+      .from('documents')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+
+  // 문서 삭제
+  deleteDocument: async (id: string) => {
+    const { error } = await supabase
+      .from('documents')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+  }
+};

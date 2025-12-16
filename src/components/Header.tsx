@@ -1,7 +1,6 @@
 "use client";
 
 import { BookOpen, User } from "lucide-react";
-import {testSupabaseConnection} from "@/lib/supabase";
 import Link from "next/link";
 
 export function Header() {
@@ -13,7 +12,6 @@ export function Header() {
             <BookOpen className="h-6 w-6 text-[#C9B59C]" />
             <span className="font-bold text-[#2D2A26]">History</span>
           </Link>
-          <button onClick={()=>{testSupabaseConnection()}}>확인</button>
           <nav className="hidden md:flex items-center gap-6">
             <Link href="/" className="text-[#6B6762] hover:text-[#2D2A26] transition-colors">
               메인
