@@ -126,7 +126,7 @@ export default function MyPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4, delay: i * 0.1 }}
                 >
-                  <HistoryCard onClick={() => router.push(`/data/${doc.id}`)}>
+                  <HistoryCard onClick={() => router.push(`/set/${doc.id}`)}>>}
                     <div className="aspect-video bg-[#EFE9E3] rounded-lg flex items-center justify-center mb-4 text-6xl">
                       {doc.thumbnail}
                     </div>
@@ -149,7 +149,7 @@ export default function MyPage() {
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();
-                            router.push(`/data/${doc.id}/makeCard`);
+                            router.push(`/set/${doc.id}/makeCard`);
                           }}
                           className="w-full py-2 bg-[#EFE9E3] text-[#6B6762] rounded-lg hover:bg-[#DAD0C7] transition-colors text-sm flex items-center justify-center gap-2"
                         >

@@ -1,13 +1,15 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, useRef, use } from "react";
 import { Check, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { SecondaryButton } from "@/components/SecondaryButton";
 import { HistoryCard } from "@/components/HistoryCard";
 import confetti from "canvas-confetti";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 export default function MakeCardPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -15,6 +17,9 @@ export default function MakeCardPage({ params }: { params: Promise<{ id: string 
   const [progress, setProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const hasStartedRef = useRef(false);
 
   const steps = [
     { label: "텍스트 분석 중...", progress: 25 },
@@ -24,11 +29,48 @@ export default function MakeCardPage({ params }: { params: Promise<{ id: string 
   ];
 
   useEffect(() => {
-    if (isComplete) return;
+    // 이미 시작했으면 리턴
+    if (hasStartedRef.current) return;
+    hasStartedRef.current = true;
+    // 문서 내용을 가져와서 퀴즈 생성
+    const generateQuiz = async () => {
+      if (isGenerating) return;
+      setIsGenerating(true);
 
-    const timer = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
+      try {
+        // Supabase에서 문서 내용 가져오기
+        const { data: document, error: fetchError } = await supabase
+          .from("cards")
+          .select("*")
+          .eq("id", id)
+          .single();
+
+        if (fetchError) throw fetchError;
+
+        if (!document) {
+          throw new Error("문서를 찾을 수 없습니다.");
+        }
+
+        // API 호출하여 퀴즈 생성
+        const response = await fetch("/api/generate-quiz", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            cardId: id,
+            content: document.content,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "퀴즈 생성에 실패했습니다.");
+        }
+
+        const data = await response.json();
+        
+        if (data.success) {
           setIsComplete(true);
           confetti({
             particleCount: 100,
@@ -36,7 +78,24 @@ export default function MakeCardPage({ params }: { params: Promise<{ id: string 
             origin: { y: 0.6 },
             colors: ['#C9B59C', '#DAD0C7', '#EFE9E3']
           });
-          clearInterval(timer);
+          toast.success(`${data.count}개의 문제가 생성되었습니다! 🎉`);
+        }
+      } catch (err: any) {
+        console.error("퀴즈 생성 오류:", err);
+        setError(err.message);
+        toast.error("퀴즈 생성에 실패했습니다.");
+      }
+    };
+
+    generateQuiz();
+  }, [id]);
+
+  useEffect(() => {
+    if (isComplete) return;
+
+    const timer = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 100) {
           return 100;
         }
         return prev + 1;
@@ -52,13 +111,32 @@ export default function MakeCardPage({ params }: { params: Promise<{ id: string 
   }, [progress]);
 
   const questionTypes = [
-    { name: "순서 맞추기", count: 5, icon: "📊" },
-    { name: "다음 사건", count: 5, icon: "🔮" },
-    { name: "결과 선택", count: 5, icon: "🎯" },
-    { name: "인물 연결", count: 5, icon: "👥" },
-    { name: "의의 파악", count: 5, icon: "💡" },
-    { name: "원인 추론", count: 5, icon: "🔍" },
+    { name: "역사 인물", count: 1, icon: "👥" },
+    { name: "역사 사건", count: 1, icon: "📊" },
+    { name: "날짜/시기", count: 1, icon: "📅" },
+    { name: "원인/결과", count: 1, icon: "🔍" },
+    { name: "의의/영향", count: 1, icon: "💡" },
   ];
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#F9F8F6] flex items-center justify-center">
+        <HistoryCard className="max-w-md text-center">
+          <div className="text-6xl mb-4">😢</div>
+          <h2 className="text-2xl font-bold mb-4">오류가 발생했습니다</h2>
+          <p className="text-[#6B6762] mb-6">{error}</p>
+          <div className="flex gap-4 justify-center">
+            <SecondaryButton onClick={() => router.push(`/set/${id}`)}>}
+              문서로 돌아가기
+            </SecondaryButton>
+            <PrimaryButton onClick={() => window.location.reload()}>
+              다시 시도
+            </PrimaryButton>
+          </div>
+        </HistoryCard>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F9F8F6] py-12">
@@ -140,7 +218,7 @@ export default function MakeCardPage({ params }: { params: Promise<{ id: string 
                 <div className="text-6xl mb-4">🎉</div>
                 <h1 className="text-4xl font-bold mb-2">생성 완료!</h1>
                 <p className="text-[#6B6762]">
-                  총 30개의 문제가 생성되었어요
+                  총 5개의 문제가 생성되었어요
                 </p>
               </div>
 
