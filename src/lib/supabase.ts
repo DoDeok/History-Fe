@@ -79,12 +79,106 @@ export const authHelpers = {
   }
 };
 
-// 문서(Documents) 관련 함수들
+// 문서(Cards) 관련 함수들
+export const cardHelpers = {
+  // 모든 카드 가져오기
+  getAllCards: async () => {
+    const { data, error } = await supabase
+      .from('cards')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  },
+
+  // 특정 사용자의 카드만 가져오기
+  getCardsByUserId: async (userId: string) => {
+    const { data, error } = await supabase
+      .from('cards')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  },
+
+  // 특정 카드 가져오기
+  getCardById: async (id: string) => {
+    const { data, error } = await supabase
+      .from('cards')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+
+  // 카드 생성
+  createCard: async (card: {
+    title: string;
+    content: string;
+    user_id: string;
+    isQuiz?: boolean;
+  }) => {
+    const { data, error } = await supabase
+      .from('cards')
+      .insert(card)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+
+  // 카드 업데이트
+  updateCard: async (id: string, updates: {
+    title?: string;
+    content?: string;
+    isQuiz?: boolean;
+  }) => {
+    const { data, error } = await supabase
+      .from('cards')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+
+  // 카드 삭제
+  deleteCard: async (id: string) => {
+    const { error } = await supabase
+      .from('cards')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+  },
+
+  // 카드가 자신의 것인지 확인
+  isCardOwner: async (cardId: string, userId: string) => {
+    const { data, error } = await supabase
+      .from('cards')
+      .select('user_id')
+      .eq('id', cardId)
+      .single();
+    
+    if (error) throw error;
+    return data?.user_id === userId;
+  }
+};
+
+// 기존 documentHelpers는 호환성을 위해 유지 (deprecated)
 export const documentHelpers = {
   // 모든 문서 가져오기
   getAllDocuments: async () => {
     const { data, error } = await supabase
-      .from('documents')
+      .from('cards')
       .select('*')
       .order('created_at', { ascending: false });
     
@@ -95,7 +189,7 @@ export const documentHelpers = {
   // 특정 문서 가져오기
   getDocumentById: async (id: string) => {
     const { data, error } = await supabase
-      .from('documents')
+      .from('cards')
       .select('*')
       .eq('id', id)
       .single();
@@ -108,11 +202,10 @@ export const documentHelpers = {
   createDocument: async (document: {
     title: string;
     content: string;
-    thumbnail?: string;
     user_id?: string;
   }) => {
     const { data, error } = await supabase
-      .from('documents')
+      .from('cards')
       .insert(document)
       .select()
       .single();
@@ -125,10 +218,9 @@ export const documentHelpers = {
   updateDocument: async (id: string, updates: {
     title?: string;
     content?: string;
-    thumbnail?: string;
   }) => {
     const { data, error } = await supabase
-      .from('documents')
+      .from('cards')
       .update(updates)
       .eq('id', id)
       .select()
@@ -141,7 +233,7 @@ export const documentHelpers = {
   // 문서 삭제
   deleteDocument: async (id: string) => {
     const { error } = await supabase
-      .from('documents')
+      .from('cards')
       .delete()
       .eq('id', id);
     
