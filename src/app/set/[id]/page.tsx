@@ -1,74 +1,87 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState, useMemo, use } from "react";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { useState, useEffect, use } from "react";
+import { Save, Sparkles, ArrowLeft, Play } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { SecondaryButton } from "@/components/SecondaryButton";
 import { HistoryCard } from "@/components/HistoryCard";
+import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
 
-export default function SetDetailPage({ params }: { params: Promise<{ id: string }> }) {
+interface CardData {
+  id: string;
+  title: string;
+  content: string;
+  user_id: string;
+  isQuiz: boolean;
+}
+
+export default function DataDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const { id } = use(params);
-  
-  // 학습 세트 목 데이터 (문서와 동일한 구조)
-  const sets = [
-    { 
-      id: "1", 
-      title: "조선시대 주요 사건",
-      author: "김역사",
-      thumbnail: "📜",
-      content: `조선 건국 (1392년)
+  const [document, setDocument] = useState<CardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [text, setText] = useState("");
 
-이성계는 위화도 회군을 통해 정권을 장악한 후, 1392년 고려를 무너뜨리고 조선을 건국했다. 수도를 한양으로 정하고 유교를 통치 이념으로 삼았다.
+  useEffect(() => {
+    // 로컬스토리지에서 사용자 정보 가져오기
+    const authToken = localStorage.getItem('sb-yfbxdujtplybaftbbmel-auth-token');
+    if (authToken) {
+      try {
+        const authData = JSON.parse(authToken);
+        setCurrentUserId(authData.user?.id || null);
+      } catch (error) {
+        console.error("로컬스토리지 파싱 오류:", error);
+      }
+    }
 
-주요 정책:
-- 과전법 실시: 토지 제도 개혁
-- 경국대전 편찬: 법전 정비
-- 한글 창제: 훈민정음 반포 (1446년)
-- 사대교린 외교: 명과의 관계 강화
+    // cards 테이블에서 데이터 가져오기
+    const fetchCard = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("cards")
+          .select("*")
+          .eq("id", id)
+          .single();
 
-조선은 500년 이상 지속되며 한국 역사에 큰 영향을 미쳤다.`,
-      hasQuestions: true,
-      plays: 1234,
-      avgScore: 85
-    },
-    { 
-      id: "2", 
-      title: "고려 건국과 발전",
-      author: "이학습",
-      thumbnail: "🏛️",
-      content: "고려는 918년 왕건에 의해 건국되었으며, 후삼국을 통일하고 발전해나갔습니다.",
-      hasQuestions: true,
-      plays: 987,
-      avgScore: 82
-    },
-    { 
-      id: "3", 
-      title: "삼국시대 역사 흐름",
-      author: "박공부",
-      thumbnail: "⚔️",
-      content: "고구려, 백제, 신라 삼국이 경쟁하며 발전한 시기입니다.",
-      hasQuestions: true,
-      plays: 856,
-      avgScore: 88
-    },
-  ];
+        if (error) throw error;
 
-  const set = useMemo(() => 
-    sets.find(s => s.id === id),
-    [id]
-  );
+        if (data) {
+          setDocument(data);
+          setText(data.content || "");
+        }
+      } catch (err: any) {
+        console.error("카드 데이터 로딩 오류:", err);
+        toast.error("문서를 불러오는데 실패했습니다.");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const [text] = useState(set?.content || "");
+    fetchCard();
+  }, [id]);
 
-  if (!set) {
+  const handleSave = () => {
+    toast.success("저장 완료! 잘 보관했어요 ✅");
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#F9F8F6] flex items-center justify-center">
+        <p className="text-gray-400">로딩 중...</p>
+      </div>
+    );
+  }
+
+  if (!document) {
     return (
       <div className="min-h-screen bg-[#F9F8F6] flex items-center justify-center">
         <HistoryCard className="max-w-md text-center">
-          <h2 className="text-2xl font-bold mb-4">세트를 찾을 수 없습니다</h2>
-          <p className="text-[#6B6762] mb-6">요청하신 세트가 존재하지 않습니다.</p>
+          <h2 className="text-2xl font-bold mb-4">문서를 찾을 수 없습니다</h2>
+          <p className="text-[#6B6762] mb-6">요청하신 문서가 존재하지 않습니다.</p>
           <PrimaryButton onClick={() => router.push("/set")}>
             목록으로 돌아가기
           </PrimaryButton>
@@ -76,6 +89,9 @@ export default function SetDetailPage({ params }: { params: Promise<{ id: string
       </div>
     );
   }
+
+  // 사용자가 카드의 소유자인지 확인
+  const isOwner = currentUserId && document.user_id === currentUserId;
 
   return (
     <div className="min-h-screen bg-[#F9F8F6] py-12">
@@ -93,67 +109,91 @@ export default function SetDetailPage({ params }: { params: Promise<{ id: string
               <ArrowLeft className="h-4 w-4" />
               목록으로
             </button>
-            <h1 className="text-4xl font-bold mb-2">{set.title}</h1>
+            <h1 className="text-4xl font-bold mb-2">{document.title}</h1>
             <p className="text-[#6B6762]">
-              by {set.author} • {set.plays}명이 학습 • 평균 {set.avgScore}점
+              추출된 텍스트를 확인하고 수정할 수 있어요
             </p>
           </div>
 
           <div className="grid lg:grid-cols-2 gap-6">
-            {/* Thumbnail */}
+            {/* Original Content Display */}
             <HistoryCard>
-              <h3 className="text-xl font-semibold mb-4">학습 세트</h3>
-              <div className="aspect-[3/4] bg-[#EFE9E3] rounded-lg flex items-center justify-center text-8xl">
-                {set.thumbnail}
+              <h3 className="text-xl font-semibold mb-4">문서 정보</h3>
+              <div className="aspect-[3/4] bg-[#EFE9E3] rounded-lg flex items-center justify-center p-8 overflow-auto">
+                <div className="text-sm whitespace-pre-wrap">
+                  {document.content}
+                </div>
               </div>
               <p className="mt-4 text-sm text-[#6B6762] text-center">
-                {set.title}
+                {document.title}
               </p>
             </HistoryCard>
 
-            {/* Content Preview */}
+            {/* Extracted Text */}
             <HistoryCard>
-              <h3 className="text-xl font-semibold mb-4">내용 미리보기</h3>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-semibold">추출된 텍스트</h3>
+                <button
+                  onClick={handleSave}
+                  className="flex items-center gap-2 text-[#C9B59C] hover:text-[#B8A78B] transition-colors text-sm"
+                >
+                  <Save className="h-4 w-4" />
+                  저장
+                </button>
+              </div>
 
               <textarea
                 value={text}
-                readOnly
-                className="w-full h-[500px] p-4 bg-[#F9F8F6] border border-[#DAD0C7] rounded-lg outline-none resize-none"
+                onChange={(e) => setText(e.target.value)}
+                className="w-full h-[500px] p-4 bg-white border border-[#DAD0C7] rounded-lg focus:border-[#C9B59C] focus:ring-2 focus:ring-[#C9B59C]/20 outline-none resize-none"
               />
 
               <div className="mt-4 p-3 bg-[#EFE9E3] rounded-lg">
                 <p className="text-sm text-[#6B6762]">
-                  💡 다른 사용자의 학습 세트입니다. 내용을 수정할 수 없습니다.
+                  💡 자동 저장이 활성화되어 있어요. 변경사항은 자동으로 저장됩니다.
                 </p>
               </div>
             </HistoryCard>
           </div>
 
-          {/* Action Buttons - 문제 생성 버튼 없음, 흐름도/게임만 */}
+          {/* Action Buttons */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.2 }}
             className="mt-8 flex flex-col sm:flex-row gap-4 justify-center"
           >
-            <PrimaryButton 
-              onClick={() => router.push(`/set/${id}/flow`)}
-              className="flex items-center gap-2"
-            >
-              🌊 흐름도 보기
-            </PrimaryButton>
-            <PrimaryButton 
-              onClick={() => router.push(`/game/${id}`)}
-              className="flex items-center gap-2"
-            >
-              🎮 문제 풀기
-            </PrimaryButton>
-            <SecondaryButton 
-              onClick={() => router.push(`/rank/${id}`)}
-              className="flex items-center gap-2"
-            >
-              🏆 랭킹 보기
-            </SecondaryButton>
+            {!document.isQuiz && isOwner ? (
+              <PrimaryButton 
+                onClick={() => router.push(`/set/${id}/makeCard`)}
+                className="flex items-center gap-2"
+              >
+                <Sparkles className="h-5 w-5" />
+                AI 문제 생성하기
+              </PrimaryButton>
+            ) : document.isQuiz ? (
+              <>
+                <PrimaryButton 
+                  onClick={() => router.push(`/set/${id}/flow`)}
+                  className="flex items-center gap-2"
+                >
+                  🌊 흐름도 보기
+                </PrimaryButton>
+                <PrimaryButton 
+                  onClick={() => router.push(`/game/${id}`)}
+                  className="flex items-center gap-2"
+                >
+                  <Play className="h-5 w-5" />
+                  게임 시작
+                </PrimaryButton>
+                <SecondaryButton 
+                  onClick={() => router.push(`/rank/${id}`)}
+                  className="flex items-center gap-2"
+                >
+                  🏆 랭킹 보기
+                </SecondaryButton>
+              </>
+            ) : null}
             <SecondaryButton onClick={() => router.push("/set")}>
               목록으로 돌아가기
             </SecondaryButton>

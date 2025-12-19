@@ -1,9 +1,11 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState, use } from "react";
+import { useState, use, useEffect } from "react";
 import { ZoomIn, ZoomOut, Maximize2, X } from "lucide-react";
 import { HistoryCard } from "@/components/HistoryCard";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 interface FlowNode {
   id: string;
@@ -20,53 +22,68 @@ export default function FlowChartPage({ params }: { params: Promise<{ id: string
   const { id } = use(params);
   const [zoom, setZoom] = useState(100);
   const [selectedNode, setSelectedNode] = useState<FlowNode | null>(null);
+  const [nodes, setNodes] = useState<FlowNode[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const nodes: FlowNode[] = [
-    {
-      id: "1",
-      title: "조선 건국",
-      date: "1392년",
-      description: "이성계가 고려를 무너뜨리고 조선을 세웠다",
-      cause: "위화도 회군으로 정권 장악",
-      result: "새로운 왕조 탄생, 유교 국가 건설",
-      people: ["이성계", "정도전", "조준"],
-      significance: "500년 이상 지속된 왕조의 시작"
-    },
-    {
-      id: "2",
-      title: "과전법 실시",
-      date: "1391년",
-      description: "토지 제도를 개혁하여 신진 사대부에게 토지를 지급",
-      cause: "고려 말 토지 제도의 문란",
-      result: "국가 재정 안정, 양반 체제 확립",
-      people: ["조준", "정도전"],
-      significance: "조선 초기 정치·경제 기반 마련"
-    },
-    {
-      id: "3",
-      title: "한양 천도",
-      date: "1394년",
-      description: "수도를 개경에서 한양으로 옮김",
-      cause: "새 왕조의 정당성 확보, 풍수지리적 이유",
-      result: "조선의 수도로 600년 이상 지속",
-      people: ["이성계", "정도전"],
-      significance: "현대 서울의 기원"
-    },
-    {
-      id: "4",
-      title: "훈민정음 창제",
-      date: "1443년",
-      description: "세종대왕이 한글을 창제하고 1446년 반포",
-      cause: "백성이 한자를 사용하기 어려움",
-      result: "독자적인 문자 체계 확립",
-      people: ["세종대왕", "집현전 학사들"],
-      significance: "한국 문화의 독창성 상징"
-    },
-  ];
+  useEffect(() => {
+    const fetchFlowData = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("flow")
+          .select("*")
+          .eq("card_id", id)
+          .order("node_order", { ascending: true });
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          setNodes(data.map((item: any) => ({
+            id: item.id,
+            title: item.title,
+            date: item.date || "",
+            description: item.content || "",
+            cause: item.cause || "",
+            result: item.result || "",
+            people: item.people || [],
+            significance: item.significance || "",
+          })));
+        }
+      } catch (err: any) {
+        console.error("흐름도 데이터 로딩 오류:", err);
+        toast.error("흐름도 데이터를 불러오는데 실패했습니다.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFlowData();
+  }, [id]);
 
   const handleZoomIn = () => setZoom(Math.min(zoom + 10, 150));
   const handleZoomOut = () => setZoom(Math.max(zoom - 10, 50));
   const handleFitScreen = () => setZoom(100);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#F9F8F6] flex items-center justify-center">
+        <HistoryCard className="max-w-md text-center">
+          <h2 className="text-2xl font-bold mb-4">흐름도를 불러오는 중...</h2>
+          <p className="text-[#6B6762]">잠시만 기다려주세요.</p>
+        </HistoryCard>
+      </div>
+    );
+  }
+
+  if (nodes.length === 0) {
+    return (
+      <div className="min-h-screen bg-[#F9F8F6] flex items-center justify-center">
+        <HistoryCard className="max-w-md text-center">
+          <h2 className="text-2xl font-bold mb-4">흐름도가 없습니다</h2>
+          <p className="text-[#6B6762]">아직 생성된 흐름도가 없습니다.</p>
+        </HistoryCard>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F9F8F6] py-12">

@@ -48,7 +48,7 @@ export default function TransformPage() {
       
       // 1초 후 상세 페이지로 이동
       setTimeout(() => {
-        router.push(`/data/${newDocId}`);
+        router.push(`/set/${newDocId}`);
       }, 1000);
     }, 2000);
   };
