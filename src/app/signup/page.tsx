@@ -6,8 +6,11 @@ import { motion } from "framer-motion";
 import { HistoryCard } from "@/components/HistoryCard";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { HistoryInput } from "@/components/HistoryInput";
+import GithubAuthButton from "../../components/GithubAuthButton";
+import { useAuthRedirect } from "@/hooks/useAuthRedirect";
 
 export default function SignupPage() {
+  useAuthRedirect(); // OAuth 토큰이 URL에 붙으면 /auth로 리디렉션
   const router = useRouter();
   const [formData, setFormData] = useState({
     email: "",
@@ -74,6 +77,14 @@ export default function SignupPage() {
               <PrimaryButton type="submit" className="w-full">
                 가입하기
               </PrimaryButton>
+
+              <div className="flex items-center gap-3 my-2">
+                <hr className="flex-1 border-t border-gray-200" />
+                <span className="text-sm text-[#6B6762]">또는</span>
+                <hr className="flex-1 border-t border-gray-200" />
+              </div>
+
+              <GithubAuthButton />
               
               <p className="text-center text-sm text-[#6B6762]">
                 이미 계정이 있으신가요?{" "}
