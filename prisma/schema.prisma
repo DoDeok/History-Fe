@@ -1,0 +1,96 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id         String   @id @default(uuid()) @db.Uuid
+  user_id    String   @unique
+  password   String
+  created_at DateTime @default(now()) @db.Timestamptz
+
+  cards      Card[]
+  quizzes    Quiz[]
+  records    GameRecord[]
+
+  @@map("users")
+}
+
+model Card {
+  id         String   @id @default(uuid()) @db.Uuid
+  user_id    String   @db.Uuid
+  title      String
+  content    String
+  isQuiz     Boolean  @default(false)
+  created_at DateTime @default(now()) @db.Timestamptz
+
+  user       User         @relation(fields: [user_id], references: [id])
+  flows      Flow[]
+  quizzes    Quiz[]
+  records    GameRecord[]
+
+  @@map("cards")
+}
+
+model Flow {
+  id           String   @id @default(uuid()) @db.Uuid
+  card_id      String   @db.Uuid
+  flow         String
+  node_order   Int
+  title        String
+  content      String
+  date         String
+  cause        String
+  result       String
+  people       String[]
+  significance String
+  created_at   DateTime @default(now()) @db.Timestamptz
+
+  card         Card     @relation(fields: [card_id], references: [id])
+
+  @@map("flow")
+}
+
+model Quiz {
+  id             String   @id @default(uuid()) @db.Uuid
+  user_id        String   @db.Uuid
+  card_id        String?  @db.Uuid
+  title          String
+  content        String
+  correct_answer String
+  score          Int
+  options        String[]
+  type           String
+  created_at     DateTime @default(now()) @db.Timestamptz
+
+  user           User     @relation(fields: [user_id], references: [id])
+  card           Card?    @relation(fields: [card_id], references: [id])
+  records        GameRecord[]
+
+  @@map("quiz")
+}
+
+model GameRecord {
+  id         String   @id @default(uuid()) @db.Uuid
+  user_id    String   @db.Uuid
+  quiz_id    String   @db.Uuid
+  card_id    String   @db.Uuid
+  is_correct Boolean
+  flow       String?
+  order      Int?
+  title      String?
+  content    String?
+  created_at DateTime @default(now()) @db.Timestamptz
+
+  user       User     @relation(fields: [user_id], references: [id])
+  quiz       Quiz     @relation(fields: [quiz_id], references: [id])
+  card       Card     @relation(fields: [card_id], references: [id])
+
+  @@map("game_records")
+}
