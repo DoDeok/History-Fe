@@ -126,7 +126,7 @@ export default function MakeCardPage({ params }: { params: Promise<{ id: string 
           <h2 className="text-2xl font-bold mb-4">오류가 발생했습니다</h2>
           <p className="text-[#6B6762] mb-6">{error}</p>
           <div className="flex gap-4 justify-center">
-            <SecondaryButton onClick={() => router.push(`/set/${id}`)}>}
+            <SecondaryButton onClick={() => router.push(`/set/${id}`)}>
               문서로 돌아가기
             </SecondaryButton>
             <PrimaryButton onClick={() => window.location.reload()}>

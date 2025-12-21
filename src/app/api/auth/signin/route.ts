@@ -1,13 +1,25 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE
 
-const admin = createClient(supabaseUrl, supabaseServiceKey)
+// 빌드 타임에 환경 변수가 없으면 에러를 던지지 않도록 처리
+let admin: ReturnType<typeof createClient> | null = null;
+
+if (supabaseUrl && supabaseServiceKey) {
+  admin = createClient(supabaseUrl, supabaseServiceKey);
+}
 
 export async function POST(request: Request) {
   try {
+    if (!admin) {
+      return NextResponse.json(
+        { error: 'Supabase configuration is missing' },
+        { status: 500 }
+      );
+    }
+
     const { email, password } = await request.json()
     // 서버 사이드에서 비밀번호 로그인은 제한될 수 있으므로 클라이언트에서 처리하는 것이 일반적.
     // 여기서는 admin 키로 사용자를 찾아 users 테이블에 프로필이 없으면 생성만 함.
