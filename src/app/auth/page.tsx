@@ -101,35 +101,12 @@ export default function AuthCallbackPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-[#F9F8F6] flex items-center justify-center">
-      <div className="bg-white p-8 rounded-xl shadow-lg text-center max-w-md w-full mx-4">
-        <div className="mb-6">
-          {status !== '실패' && status !== '에러' ? (
-            <div className="w-12 h-12 border-4 border-[#C9B59C] border-t-transparent rounded-full animate-spin mx-auto"></div>
-          ) : (
-            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto">
-              <span className="text-red-500 text-2xl">!</span>
-            </div>
-          )}
+    <>
+      <div className="fixed inset-0 bg-[#F9F8F6] flex items-center justify-center z-50">
+        <div className="flex items-center justify-center w-full h-full">
+          <div className="w-14 h-14 border-4 border-[#C9B59C] border-t-transparent rounded-full animate-spin" />
         </div>
-        <h2 className="text-xl font-semibold mb-2">
-          {status === '실패' || status === '에러' ? '로그인 실패' : '로그인 처리 중...'}
-        </h2>
-        <p className="text-[#6B6762] mb-4">{status}</p>
-        {errorMsg && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600 mb-4">
-            {errorMsg}
-          </div>
-        )}
-        {(status === '실패' || status === '에러') && (
-          <button
-            onClick={() => router.push('/login')}
-            className="px-6 py-2 bg-[#C9B59C] text-white rounded-lg hover:bg-[#B8A78B] transition-colors"
-          >
-            로그인 페이지로 돌아가기
-          </button>
-        )}
       </div>
-    </div>
+    </>
   );
 }
