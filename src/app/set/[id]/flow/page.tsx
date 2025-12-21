@@ -1,8 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState, use, useEffect } from "react";
-import { ZoomIn, ZoomOut, Maximize2, X } from "lucide-react";
+import { useState, use, useEffect, useRef } from "react";
+import { ZoomIn, ZoomOut, Maximize2, X, Move, RotateCcw } from "lucide-react";
 import { HistoryCard } from "@/components/HistoryCard";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -24,6 +24,12 @@ export default function FlowChartPage({ params }: { params: Promise<{ id: string
   const [selectedNode, setSelectedNode] = useState<FlowNode | null>(null);
   const [nodes, setNodes] = useState<FlowNode[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // 드래그 관련 상태
+  const [isDragging, setIsDragging] = useState(false);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [startPos, setStartPos] = useState({ x: 0, y: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchFlowData = async () => {
@@ -59,9 +65,50 @@ export default function FlowChartPage({ params }: { params: Promise<{ id: string
     fetchFlowData();
   }, [id]);
 
-  const handleZoomIn = () => setZoom(Math.min(zoom + 10, 150));
-  const handleZoomOut = () => setZoom(Math.max(zoom - 10, 50));
-  const handleFitScreen = () => setZoom(100);
+  const handleZoomIn = () => setZoom(Math.min(zoom + 10, 200));
+  const handleZoomOut = () => setZoom(Math.max(zoom - 10, 30));
+  const handleFitScreen = () => {
+    setZoom(100);
+    setPosition({ x: 0, y: 0 });
+  };
+  const handleResetPosition = () => setPosition({ x: 0, y: 0 });
+
+  // 줌 레벨에 따른 그리드 컬럼 수 계산
+  const getGridCols = () => {
+    if (zoom <= 50) return "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6";
+    if (zoom <= 70) return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5";
+    if (zoom <= 100) return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
+    if (zoom <= 130) return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3";
+    return "grid-cols-1 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-2";
+  };
+
+  // 드래그 핸들러
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('.flow-node')) return;
+    setIsDragging(true);
+    setStartPos({ x: e.clientX - position.x, y: e.clientY - position.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    setPosition({
+      x: e.clientX - startPos.x,
+      y: e.clientY - startPos.y,
+    });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  // 휠 줌
+  const handleWheel = (e: React.WheelEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -10 : 10;
+      setZoom(prev => Math.min(Math.max(prev + delta, 30), 200));
+    }
+  };
 
   if (loading) {
     return (
@@ -102,7 +149,7 @@ export default function FlowChartPage({ params }: { params: Promise<{ id: string
             </div>
 
             {/* Zoom Controls */}
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <button
                 onClick={handleZoomOut}
                 className="p-2 bg-white border border-[#DAD0C7] rounded-lg hover:bg-[#EFE9E3] transition-colors"
@@ -124,49 +171,86 @@ export default function FlowChartPage({ params }: { params: Promise<{ id: string
               >
                 <ZoomIn className="h-5 w-5 text-[#6B6762]" />
               </button>
+              <button
+                onClick={handleResetPosition}
+                className="p-2 bg-white border border-[#DAD0C7] rounded-lg hover:bg-[#EFE9E3] transition-colors"
+                title="위치 초기화"
+              >
+                <RotateCcw className="h-5 w-5 text-[#6B6762]" />
+              </button>
               <span className="px-3 py-2 bg-white border border-[#DAD0C7] rounded-lg text-sm text-[#6B6762]">
                 {zoom}%
+              </span>
+              <span className="px-3 py-2 bg-[#EFE9E3] border border-[#DAD0C7] rounded-lg text-xs text-[#6B6762] flex items-center gap-1">
+                <Move className="h-4 w-4" />
+                드래그로 이동
               </span>
             </div>
           </div>
 
           <div className="relative">
             {/* Flow Chart Area */}
-            <HistoryCard className="overflow-x-auto">
+            <div 
+              className="bg-white border border-[#DAD0C7] rounded-2xl p-6 shadow-sm overflow-hidden h-[70vh] relative"
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onWheel={handleWheel}
+              style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+            >
               <div 
-                className="min-w-max p-8"
-                style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top left' }}
+                ref={containerRef}
+                className="p-8 transition-transform duration-75"
+                style={{ 
+                  transform: `translate(${position.x}px, ${position.y}px) scale(${zoom / 100})`, 
+                  transformOrigin: 'top left',
+                  width: `${100 * (100 / zoom)}%`,
+                }}
               >
-                <div className="flex flex-col items-center gap-8">
+                <div className={`grid ${getGridCols()} gap-6`}>
                   {nodes.map((node, index) => (
-                    <div key={node.id} className="flex flex-col items-center">
-                      {/* Node */}
-                      <motion.div
-                        whileHover={{ scale: 1.05 }}
-                        onClick={() => setSelectedNode(node)}
-                        className="w-64 p-6 bg-[#EFE9E3] border-2 border-[#C9B59C] rounded-xl cursor-pointer hover:shadow-lg transition-shadow"
-                      >
-                        <div className="text-center">
-                          <h3 className="text-lg font-semibold mb-1">{node.title}</h3>
-                          <p className="text-sm text-[#C9B59C] font-medium">{node.date}</p>
-                          <p className="mt-3 text-sm text-[#6B6762]">
-                            {node.description}
-                          </p>
-                        </div>
-                      </motion.div>
-
-                      {/* Arrow */}
+                    <motion.div
+                      key={node.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: index * 0.05 }}
+                      whileHover={{ scale: 1.03, y: -4 }}
+                      onClick={() => setSelectedNode(node)}
+                      className="flow-node relative p-6 bg-[#EFE9E3] border-2 border-[#C9B59C] rounded-xl cursor-pointer hover:shadow-lg transition-all"
+                    >
+                      {/* 순서 번호 배지 */}
+                      <div className="absolute -top-3 -left-3 w-8 h-8 bg-[#C9B59C] text-white rounded-full flex items-center justify-center font-bold text-sm shadow-md">
+                        {index + 1}
+                      </div>
+                      
+                      {/* 연결선 (다음 노드로) */}
                       {index < nodes.length - 1 && (
-                        <div className="flex flex-col items-center my-4">
-                          <div className="w-0.5 h-12 bg-[#C9B59C]" />
-                          <div className="w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-[#C9B59C]" />
+                        <div className="hidden lg:block absolute -right-6 top-1/2 transform -translate-y-1/2">
+                          <div className="flex items-center">
+                            <div className="w-4 h-0.5 bg-[#C9B59C]" />
+                            <div className="w-0 h-0 border-t-4 border-b-4 border-l-4 border-t-transparent border-b-transparent border-l-[#C9B59C]" />
+                          </div>
                         </div>
                       )}
-                    </div>
+
+                      <div className="text-center pt-2">
+                        <h3 className="text-lg font-semibold mb-1 line-clamp-2">{node.title}</h3>
+                        <p className="text-sm text-[#C9B59C] font-medium mb-3">{node.date}</p>
+                        <p className="text-sm text-[#6B6762] line-clamp-3">
+                          {node.description}
+                        </p>
+                      </div>
+                      
+                      {/* 클릭 힌트 */}
+                      <div className="mt-4 text-center">
+                        <span className="text-xs text-[#A89F94]">클릭하여 자세히 보기</span>
+                      </div>
+                    </motion.div>
                   ))}
                 </div>
               </div>
-            </HistoryCard>
+            </div>
 
             {/* Side Panel for Selected Node */}
             {selectedNode && (

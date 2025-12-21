@@ -10,7 +10,9 @@ import {
   Trash2, 
   Loader2,
   Copy,
-  Check
+  Check,
+  GitBranch,
+  HelpCircle
 } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 import { HistoryCard } from "@/components/HistoryCard";
@@ -29,7 +31,7 @@ interface Card {
 export default function DataDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const dataId = params.id as string;
+  const dataId = params?.id as string;
   
   const [card, setCard] = useState<Card | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,6 +39,8 @@ export default function DataDetailPage() {
   const [copied, setCopied] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
+  const [generatingFlow, setGeneratingFlow] = useState(false);
+  const [generatingQuiz, setGeneratingQuiz] = useState(false);
 
   // 사용자 인증 확인 및 데이터 로드
   useEffect(() => {
@@ -250,17 +254,62 @@ export default function DataDetailPage() {
               <h2 className="text-lg font-semibold mb-4">추가 작업</h2>
               <div className="flex flex-wrap gap-4">
                 <button
-                  onClick={() => router.push(`/set/${card.id}/flow`)}
-                  className="flex-1 min-w-[200px] px-6 py-4 bg-[#F5F3F0] text-[#3D3A36] rounded-lg hover:bg-[#EFE9E3] transition-colors text-left"
+                  onClick={async () => {
+                    if (!card) return;
+                    setGeneratingFlow(true);
+                    try {
+                      const response = await fetch("/api/generate-flow", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          cardId: card.id,
+                          content: card.content,
+                          userId: userId,
+                        }),
+                      });
+                      
+                      if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || "흐름도 생성 실패");
+                      }
+                      
+                      toast.success("흐름도가 생성되었습니다!");
+                      router.push(`/set/${card.id}/flow`);
+                    } catch (error: any) {
+                      console.error("흐름도 생성 오류:", error);
+                      toast.error(error.message || "흐름도 생성에 실패했습니다.");
+                    } finally {
+                      setGeneratingFlow(false);
+                    }
+                  }}
+                  disabled={generatingFlow}
+                  className="flex-1 min-w-[200px] px-6 py-4 bg-[#F5F3F0] text-[#3D3A36] rounded-lg hover:bg-[#EFE9E3] transition-colors text-left disabled:opacity-50"
                 >
-                  <h3 className="font-semibold mb-1">플로우 생성</h3>
-                  <p className="text-sm text-[#6B6762]">역사적 사건을 시간순으로 정리합니다</p>
+                  <div className="flex items-center gap-2 mb-1">
+                    {generatingFlow ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <GitBranch className="h-5 w-5" />
+                    )}
+                    <h3 className="font-semibold">
+                      {generatingFlow ? "흐름도 생성 중..." : "흐름도 생성"}
+                    </h3>
+                  </div>
+                  <p className="text-sm text-[#6B6762]">
+                    {generatingFlow 
+                      ? "AI가 역사적 사건을 분석하고 있습니다" 
+                      : "역사적 사건을 시간순으로 정리합니다"}
+                  </p>
                 </button>
                 <button
-                  onClick={() => router.push(`/set/${card.id}/makeCard`)}
-                  className="flex-1 min-w-[200px] px-6 py-4 bg-[#F5F3F0] text-[#3D3A36] rounded-lg hover:bg-[#EFE9E3] transition-colors text-left"
+                  onClick={() => router.push(`/set/${card?.id}/makeCard`)}
+                  disabled={generatingQuiz}
+                  className="flex-1 min-w-[200px] px-6 py-4 bg-[#F5F3F0] text-[#3D3A36] rounded-lg hover:bg-[#EFE9E3] transition-colors text-left disabled:opacity-50"
                 >
-                  <h3 className="font-semibold mb-1">퀴즈 생성</h3>
+                  <div className="flex items-center gap-2 mb-1">
+                    <HelpCircle className="h-5 w-5" />
+                    <h3 className="font-semibold">퀴즈 생성</h3>
+                  </div>
                   <p className="text-sm text-[#6B6762]">학습 내용 기반 퀴즈를 만듭니다</p>
                 </button>
               </div>

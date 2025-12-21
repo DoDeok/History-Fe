@@ -114,3 +114,67 @@ JSON 배열로 정확히 5개만 반환:
     throw error;
   }
 }
+
+// 역사 흐름도 생성 함수
+export async function generateFlow(content: string) {
+  const prompt = `다음 역사 자료를 분석하여 시간순 흐름도 데이터를 생성하세요.
+
+자료 내용:
+${content}
+
+**중요: 주요 사건들을 시간순으로 정리하여 3~8개의 노드를 생성하세요**
+
+각 노드는 다음 형식을 따라야 합니다:
+- title: 사건 이름 (간결하게)
+- date: 날짜/시기 (예: "1919년 3월 1일", "1945년 8월", "고려 초기" 등)
+- content: 사건의 주요 내용 설명 (2~3문장)
+- cause: 사건의 원인/배경 (1~2문장)
+- result: 사건의 결과/영향 (1~2문장)
+- people: 관련 인물 배열 (최대 3명)
+- significance: 역사적 의의 (1문장)
+
+JSON 배열로 반환 (시간순 정렬):
+[
+  {
+    "title": "3.1 운동",
+    "date": "1919년 3월 1일",
+    "content": "일제 강점기 최대 규모의 독립운동. 전국적으로 만세 시위가 펼쳐졌다.",
+    "cause": "민족자결주의 영향과 고종 황제 독살설로 인한 민족 분노",
+    "result": "대한민국 임시정부 수립의 계기가 됨",
+    "people": ["손병희", "유관순", "한용운"],
+    "significance": "민족의 독립 의지를 전 세계에 알린 역사적 사건"
+  }
+]
+
+**규칙:**
+1. 시간순으로 정렬
+2. 3~8개 노드 생성
+3. JSON 배열만 반환, 다른 텍스트 없이`;
+
+  try {
+    if (!model) {
+      throw new Error("Gemini API가 설정되지 않았습니다.");
+    }
+    
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    
+    // JSON 추출
+    let jsonText = text;
+    if (text.includes("```json")) {
+      jsonText = text.split("```json")[1].split("```")[0].trim();
+    } else if (text.includes("```")) {
+      jsonText = text.split("```")[1].split("```")[0].trim();
+    }
+    
+    const flowNodes = JSON.parse(jsonText);
+    
+    console.log(`흐름도 생성 완료: ${flowNodes.length}개 노드 생성`);
+    
+    return flowNodes;
+  } catch (error) {
+    console.error("흐름도 생성 오류:", error);
+    throw error;
+  }
+}
