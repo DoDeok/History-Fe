@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { HistoryCard } from "@/components/HistoryCard";
 import { toast } from "sonner";
 import { cardHelpers } from "@/lib/supabase";
+import { useAuthStore } from "@/store/authStore";
 
 interface Card {
   id: string;
@@ -22,20 +23,16 @@ export default function DataPage() {
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [userId, setUserId] = useState<string | null>(null);
+  const { user, isAuthenticated } = useAuthStore();
 
   // 사용자 인증 확인 및 데이터 로드
   useEffect(() => {
-    const checkAuthAndLoadData = async () => {
-      const storedUser = localStorage.getItem("user");
-      if (!storedUser) {
+    const loadData = async () => {
+      if (!isAuthenticated || !user) {
         toast.error("로그인이 필요합니다.");
         router.push("/login");
         return;
       }
-
-      const user = JSON.parse(storedUser);
-      setUserId(user.id);
 
       try {
         // 자신의 문서만 가져오기
@@ -49,8 +46,8 @@ export default function DataPage() {
       }
     };
 
-    checkAuthAndLoadData();
-  }, [router]);
+    loadData();
+  }, [router, isAuthenticated, user]);
 
   // 검색 필터링
   const filteredCards = cards.filter(

@@ -1,45 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { BookOpen, User, LogOut, FileText, Upload } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useAuthStore } from "@/store/authStore";
 
 export function Header() {
   const router = useRouter();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userName, setUserName] = useState("");
+  const { user, isAuthenticated, logout } = useAuthStore();
 
-  useEffect(() => {
-    // 로그인 상태 확인
-    const checkAuth = () => {
-      const storedUser = localStorage.getItem("user");
-      if (storedUser) {
-        try {
-          const user = JSON.parse(storedUser);
-          setIsLoggedIn(true);
-          setUserName(user.name || user.email || "사용자");
-        } catch (error) {
-          setIsLoggedIn(false);
-        }
-      } else {
-        setIsLoggedIn(false);
-      }
-    };
-
-    checkAuth();
-
-    // storage 이벤트 리스너 (다른 탭에서 로그인/로그아웃 시 동기화)
-    window.addEventListener("storage", checkAuth);
-    return () => window.removeEventListener("storage", checkAuth);
-  }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem("user");
-    setIsLoggedIn(false);
-    setUserName("");
+  const handleLogout = async () => {
+    await logout();
     toast.success("로그아웃되었습니다.");
     router.push("/");
   };
@@ -49,7 +22,7 @@ export function Header() {
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2 transition-transform hover:scale-105">
-            <Image 
+            <Image
               src="/Gemini_Generated_Image_7pw8ta7pw8ta7pw8 1-Photoroom 1.svg"
               alt="History Logo"
               width={32}
@@ -58,13 +31,13 @@ export function Header() {
             />
             <span className="font-bold text-[#2D2A26]">History</span>
           </Link>
-          
+
           <nav className="hidden md:flex items-center gap-6">
             <Link href="/" className="text-[#6B6762] hover:text-[#2D2A26] transition-colors">
               메인
             </Link>
-            
-            {isLoggedIn ? (
+
+            {isAuthenticated ? (
               <>
                 <Link href="/set" className="text-[#6B6762] hover:text-[#2D2A26] transition-colors flex items-center gap-1">
                   <BookOpen className="h-4 w-4" />
@@ -91,15 +64,15 @@ export function Header() {
             )}
           </nav>
         </div>
-        
-        {isLoggedIn ? (
+
+        {isAuthenticated ? (
           <div className="flex items-center gap-4">
-            <Link 
-              href="/my" 
+            <Link
+              href="/my"
               className="flex items-center gap-2 text-[#6B6762] hover:text-[#2D2A26] transition-colors"
             >
               <User className="h-5 w-5" />
-              <span className="hidden sm:inline">{userName}</span>
+              <span className="hidden sm:inline">{user?.user_id || "사용자"}</span>
             </Link>
             <button
               onClick={handleLogout}
@@ -110,8 +83,8 @@ export function Header() {
             </button>
           </div>
         ) : (
-          <Link 
-            href="/login" 
+          <Link
+            href="/login"
             className="flex items-center gap-2 px-4 py-2 bg-[#C9B59C] text-white rounded-lg hover:bg-[#B8A78B] transition-colors"
           >
             <User className="h-5 w-5" />

@@ -8,21 +8,45 @@ import { PrimaryButton } from "@/components/PrimaryButton";
 import { HistoryInput } from "@/components/HistoryInput";
 import GithubAuthButton from "../../components/GithubAuthButton";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
+import { useAuthStore } from "@/store/authStore";
+import { toast } from "sonner";
 
 export default function SignupPage() {
   useAuthRedirect(); // OAuth 토큰이 URL에 붙으면 /auth로 리디렉션
   const router = useRouter();
+  const signup = useAuthStore((state) => state.signup);
   const [formData, setFormData] = useState({
+    user_id: "",
     email: "",
     password: "",
     confirmPassword: "",
-    name: "",
   });
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // 회원가입 로직
-    router.push("/login");
+
+    // Validate password match
+    if (formData.password !== formData.confirmPassword) {
+      toast.error("비밀번호가 일치하지 않습니다.");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      await signup({
+        user_id: formData.user_id,
+        email: formData.email,
+        password: formData.password,
+      });
+      toast.success("회원가입 성공!");
+      router.push("/");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "회원가입에 실패했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -35,27 +59,26 @@ export default function SignupPage() {
           className="max-w-md mx-auto"
         >
           <h1 className="text-4xl font-bold text-center mb-8">회원가입</h1>
-          
+
           <HistoryCard>
             <form onSubmit={handleSubmit} className="space-y-4">
               <HistoryInput
-                label="이름"
+                label="아이디"
                 type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="이름을 입력하세요"
+                value={formData.user_id}
+                onChange={(e) => setFormData({ ...formData, user_id: e.target.value })}
+                placeholder="아이디를 입력하세요"
                 required
               />
-              
+
               <HistoryInput
-                label="이메일"
+                label="이메일 (선택사항)"
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 placeholder="이메일을 입력하세요"
-                required
               />
-              
+
               <HistoryInput
                 label="비밀번호"
                 type="password"
@@ -64,7 +87,7 @@ export default function SignupPage() {
                 placeholder="비밀번호를 입력하세요"
                 required
               />
-              
+
               <HistoryInput
                 label="비밀번호 확인"
                 type="password"
@@ -73,7 +96,7 @@ export default function SignupPage() {
                 placeholder="비밀번호를 다시 입력하세요"
                 required
               />
-              
+
               <PrimaryButton type="submit" className="w-full">
                 가입하기
               </PrimaryButton>
@@ -85,7 +108,7 @@ export default function SignupPage() {
               </div>
 
               <GithubAuthButton />
-              
+
               <p className="text-center text-sm text-[#6B6762]">
                 이미 계정이 있으신가요?{" "}
                 <button

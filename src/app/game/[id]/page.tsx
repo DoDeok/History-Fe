@@ -10,6 +10,7 @@ import { HistoryCard } from "@/components/HistoryCard";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
+import { useAuthStore } from "@/store/authStore";
 
 interface Quiz {
   id: string;
@@ -65,7 +66,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
     }
 
     let isCorrect = false;
-    
+
     // 객관식일 경우 숫자 비교, 단답형일 경우 텍스트 비교
     if (currentQuiz.options && currentQuiz.options.length > 0) {
       // 객관식: userAnswer가 "1", "2", "3", "4" 형태
@@ -74,9 +75,9 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
       // 단답형: 텍스트 비교
       isCorrect = userAnswer.trim().toLowerCase() === currentQuiz.correct_answer.toLowerCase();
     }
-    
+
     setShowExplanation(true);
-    
+
     const newAnswers = [...answers];
     newAnswers[currentIndex] = isCorrect;
     setAnswers(newAnswers);
@@ -118,21 +119,17 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
   };
 
   const saveScore = async () => {
+    // useAuthStore에서 사용자 정보 가져오기
+    const user = useAuthStore.getState().user;
+
+    if (!user) {
+      toast.error("로그인이 필요합니다.");
+      return;
+    }
+
+    const userId = user.id;
+
     try {
-      // 로컬스토리지에서 사용자 정보 가져오기
-      const authToken = localStorage.getItem('sb-yfbxdujtplybaftbbmel-auth-token');
-      if (!authToken) {
-        toast.error("로그인이 필요합니다.");
-        return;
-      }
-
-      const authData = JSON.parse(authToken);
-      const userId = authData.user?.id;
-
-      if (!userId) {
-        toast.error("사용자 정보를 찾을 수 없습니다.");
-        return;
-      }
 
       // 각 퀴즈 결과를 game_records에 저장
       const records = quizzes.map((quiz, index) => ({
@@ -184,7 +181,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
   if (isFinished) {
     const totalScore = quizzes.reduce((sum, q) => sum + q.score, 0);
     const percentage = Math.round((score / totalScore) * 100);
-    
+
     return (
       <div className="min-h-screen bg-[#F9F8F6] py-12">
         <div className="container mx-auto px-4 max-w-2xl">
@@ -213,9 +210,8 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                   {answers.map((isCorrect, index) => (
                     <div
                       key={index}
-                      className={`p-3 rounded-lg flex items-center justify-center ${
-                        isCorrect ? "bg-green-100" : "bg-red-100"
-                      }`}
+                      className={`p-3 rounded-lg flex items-center justify-center ${isCorrect ? "bg-green-100" : "bg-red-100"
+                        }`}
                     >
                       <span className="font-medium">{index + 1}</span>
                       {isCorrect ? (
@@ -307,33 +303,31 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                         const isCorrect = currentQuiz.correct_answer === optionNumber;
                         const showCorrect = showExplanation && isCorrect;
                         const showWrong = showExplanation && isSelected && !isCorrect;
-                        
+
                         return (
                           <button
                             key={index}
                             onClick={() => !showExplanation && setUserAnswer(optionNumber)}
                             disabled={showExplanation}
-                            className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
-                              showCorrect
+                            className={`w-full p-4 rounded-lg border-2 text-left transition-all ${showCorrect
                                 ? "bg-green-50 border-green-500"
                                 : showWrong
-                                ? "bg-red-50 border-red-500"
-                                : isSelected
-                                ? "bg-[#C9B59C]/10 border-[#C9B59C]"
-                                : "border-[#EFE9E3] hover:border-[#C9B59C] hover:bg-[#EFE9E3]"
-                            } ${showExplanation ? "cursor-not-allowed" : "cursor-pointer"}`}
+                                  ? "bg-red-50 border-red-500"
+                                  : isSelected
+                                    ? "bg-[#C9B59C]/10 border-[#C9B59C]"
+                                    : "border-[#EFE9E3] hover:border-[#C9B59C] hover:bg-[#EFE9E3]"
+                              } ${showExplanation ? "cursor-not-allowed" : "cursor-pointer"}`}
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
-                                <span className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-semibold ${
-                                  showCorrect
+                                <span className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-semibold ${showCorrect
                                     ? "bg-green-500 text-white"
                                     : showWrong
-                                    ? "bg-red-500 text-white"
-                                    : isSelected
-                                    ? "bg-[#C9B59C] text-white"
-                                    : "bg-[#EFE9E3] text-[#6B6762]"
-                                }`}>
+                                      ? "bg-red-500 text-white"
+                                      : isSelected
+                                        ? "bg-[#C9B59C] text-white"
+                                        : "bg-[#EFE9E3] text-[#6B6762]"
+                                  }`}>
                                   {optionNumber}
                                 </span>
                                 <span className={showCorrect ? "text-green-700 font-medium" : showWrong ? "text-red-700" : ""}>
@@ -370,11 +364,10 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
-                    className={`p-4 rounded-lg ${
-                      answers[currentIndex] 
-                        ? "bg-green-50 border-2 border-green-200" 
+                    className={`p-4 rounded-lg ${answers[currentIndex]
+                        ? "bg-green-50 border-2 border-green-200"
                         : "bg-red-50 border-2 border-red-200"
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center gap-2 mb-2">
                       {answers[currentIndex] ? (
@@ -409,7 +402,7 @@ export default function QuizPage({ params }: { params: Promise<{ id: string }> }
                   <ArrowLeft className="h-5 w-5 mr-2" />
                   이전
                 </SecondaryButton>
-                
+
                 {!showExplanation ? (
                   <PrimaryButton onClick={handleSubmit} className="flex-1">
                     제출하기

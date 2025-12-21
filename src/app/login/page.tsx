@@ -8,19 +8,35 @@ import { PrimaryButton } from "@/components/PrimaryButton";
 import { HistoryInput } from "@/components/HistoryInput";
 import GithubAuthButton from "../../components/GithubAuthButton";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
+import { useAuthStore } from "@/store/authStore";
+import { toast } from "sonner";
 
 export default function LoginPage() {
   useAuthRedirect(); // OAuth 토큰이 URL에 붙으면 /auth로 리디렉션
   const router = useRouter();
+  const login = useAuthStore((state) => state.login);
   const [formData, setFormData] = useState({
-    email: "",
+    user_id: "",
     password: "",
   });
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // 로그인 로직
-    router.push("/");
+    setIsLoading(true);
+
+    try {
+      await login({
+        user_id: formData.user_id,
+        password: formData.password,
+      });
+      toast.success("로그인 성공!");
+      router.push("/");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "로그인에 실패했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -33,18 +49,18 @@ export default function LoginPage() {
           className="max-w-md mx-auto"
         >
           <h1 className="text-4xl font-bold text-center mb-8">로그인</h1>
-          
+
           <HistoryCard>
             <form onSubmit={handleSubmit} className="space-y-4">
               <HistoryInput
-                label="이메일"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="이메일을 입력하세요"
+                label="아이디"
+                type="text"
+                value={formData.user_id}
+                onChange={(e) => setFormData({ ...formData, user_id: e.target.value })}
+                placeholder="아이디를 입력하세요"
                 required
               />
-              
+
               <HistoryInput
                 label="비밀번호"
                 type="password"
@@ -53,11 +69,11 @@ export default function LoginPage() {
                 placeholder="비밀번호를 입력하세요"
                 required
               />
-              
+
               <PrimaryButton type="submit" className="w-full">
                 로그인
               </PrimaryButton>
-              
+
               <div className="flex items-center gap-3 my-2">
                 <hr className="flex-1 border-t border-gray-200" />
                 <span className="text-sm text-[#6B6762]">또는</span>
@@ -65,7 +81,7 @@ export default function LoginPage() {
               </div>
 
               <GithubAuthButton />
-              
+
               <p className="text-center text-sm text-[#6B6762]">
                 계정이 없으신가요?{" "}
                 <button

@@ -10,6 +10,7 @@ import { SecondaryButton } from "@/components/SecondaryButton";
 import { HistoryCard } from "@/components/HistoryCard";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { useAuthStore } from "@/store/authStore";
 
 interface CardData {
   id: string;
@@ -24,20 +25,10 @@ export default function DataDetailPage({ params }: { params: Promise<{ id: strin
   const { id } = use(params);
   const [document, setDocument] = useState<CardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const { user } = useAuthStore();
   const [text, setText] = useState("");
 
   useEffect(() => {
-    // 로컬스토리지에서 사용자 정보 가져오기
-    const authToken = localStorage.getItem('sb-yfbxdujtplybaftbbmel-auth-token');
-    if (authToken) {
-      try {
-        const authData = JSON.parse(authToken);
-        setCurrentUserId(authData.user?.id || null);
-      } catch (error) {
-        console.error("로컬스토리지 파싱 오류:", error);
-      }
-    }
 
     // cards 테이블에서 데이터 가져오기
     const fetchCard = async () => {
@@ -92,7 +83,7 @@ export default function DataDetailPage({ params }: { params: Promise<{ id: strin
   }
 
   // 사용자가 카드의 소유자인지 확인
-  const isOwner = currentUserId && document.user_id === currentUserId;
+  const isOwner = user && document.user_id === user.id;
 
   return (
     <div className="min-h-screen bg-[#F9F8F6] py-12">
@@ -165,7 +156,7 @@ export default function DataDetailPage({ params }: { params: Promise<{ id: strin
             className="mt-8 flex flex-col sm:flex-row gap-4 justify-center"
           >
             {!document.isQuiz && isOwner ? (
-              <PrimaryButton 
+              <PrimaryButton
                 onClick={() => router.push(`/set/${id}/makeCard`)}
                 className="flex items-center gap-2"
               >
@@ -174,11 +165,11 @@ export default function DataDetailPage({ params }: { params: Promise<{ id: strin
               </PrimaryButton>
             ) : document.isQuiz ? (
               <>
-                <PrimaryButton 
+                <PrimaryButton
                   onClick={() => router.push(`/set/${id}/flow`)}
                   className="flex items-center gap-2"
                 >
-                  <Image 
+                  <Image
                     src="/flow.svg"
                     alt="Flow Icon"
                     width={20}
@@ -187,18 +178,18 @@ export default function DataDetailPage({ params }: { params: Promise<{ id: strin
                   />
                   흐름도 보기
                 </PrimaryButton>
-                <PrimaryButton 
+                <PrimaryButton
                   onClick={() => router.push(`/game/${id}`)}
                   className="flex items-center gap-2"
                 >
                   <Play className="h-5 w-5" />
                   게임 시작
                 </PrimaryButton>
-                <SecondaryButton 
+                <SecondaryButton
                   onClick={() => router.push(`/rank/${id}`)}
                   className="flex items-center gap-2"
                 >
-                  <Image 
+                  <Image
                     src="/ranking.svg"
                     alt="Ranking Icon"
                     width={20}

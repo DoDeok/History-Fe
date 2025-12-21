@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { useAuthStore } from "@/store/authStore";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
+  const { setAuth, setPendingUserId } = useAuthStore();
   const [status, setStatus] = useState<string>("시작");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -34,7 +36,10 @@ export default function AuthCallbackPage() {
           if (access_token) {
             setStatus('세션 설정 중...');
             try {
-              const { data: setData, error: setError } = await supabase.auth.setSession({ access_token: access_token as string, refresh_token: (refresh_token as string) ?? undefined });
+              const { data: setData, error: setError } = await supabase.auth.setSession({
+                access_token: access_token as string,
+                refresh_token: (refresh_token as string) ?? undefined
+              });
               console.log('setSession result', { setData, setError });
               if (setError) {
                 setErrorMsg(String(setError.message || setError));
@@ -66,7 +71,7 @@ export default function AuthCallbackPage() {
           const { data: upsertData, error: upsertError } = await supabase.from('users').upsert({
             id: user.id,
             user_id: displayName,
-            password: null, // nullable로 변경 권장
+            password: null,
             created_at: new Date().toISOString()
           }, { onConflict: 'id' });
           console.log('upsert result', { upsertData, upsertError });
@@ -78,17 +83,37 @@ export default function AuthCallbackPage() {
           setErrorMsg(String(err.message || err));
         }
 
+        // Generate JWT token via API
+        setStatus('JWT 토큰 생성 중...');
+        try {
+          const response = await fetch('/api/auth/oauth-callback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: user.id,
+              email: user.email,
+              display_name: (user.user_metadata as any)?.full_name || (user.user_metadata as any)?.name || user.id,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to generate JWT');
+          }
+
+          const { user: userData } = await response.json();
+
+          // Update Zustand store
+          setAuth(userData);
+          setPendingUserId(null); // 작업 완료 후 제거
+        } catch (err: any) {
+          console.error('JWT generation error', err);
+          setErrorMsg(String(err.message || err));
+        }
+
         // URL 프래그먼트 정리(토큰 제거)
         if (window.location.hash) {
           history.replaceState(null, '', window.location.pathname + window.location.search);
         }
-
-        // localStorage에 사용자 정보 저장
-        localStorage.setItem('user', JSON.stringify({
-          id: user.id,
-          email: user.email,
-          name: (user.user_metadata as any)?.full_name || (user.user_metadata as any)?.name || user.id
-        }));
 
         setStatus('완료, 메인으로 이동');
         setTimeout(() => router.push('/'), 800);
@@ -98,7 +123,7 @@ export default function AuthCallbackPage() {
         setStatus('에러');
       }
     })();
-  }, [router]);
+  }, [router, setAuth]);
 
   return (
     <>

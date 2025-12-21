@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { 
-  FileText, 
-  Calendar, 
-  ArrowLeft, 
-  Edit, 
-  Trash2, 
+import {
+  FileText,
+  Calendar,
+  ArrowLeft,
+  Edit,
+  Trash2,
   Loader2,
   Copy,
   Check,
@@ -18,6 +18,7 @@ import { useRouter, useParams } from "next/navigation";
 import { HistoryCard } from "@/components/HistoryCard";
 import { toast } from "sonner";
 import { cardHelpers } from "@/lib/supabase";
+import { useAuthStore } from "@/store/authStore";
 
 interface Card {
   id: string;
@@ -32,37 +33,34 @@ export default function DataDetailPage() {
   const router = useRouter();
   const params = useParams();
   const dataId = params?.id as string;
-  
+
   const [card, setCard] = useState<Card | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
+  const { user, isAuthenticated } = useAuthStore();
   const [isOwner, setIsOwner] = useState(false);
   const [generatingFlow, setGeneratingFlow] = useState(false);
   const [generatingQuiz, setGeneratingQuiz] = useState(false);
 
   // 사용자 인증 확인 및 데이터 로드
   useEffect(() => {
-    const checkAuthAndLoadData = async () => {
-      const storedUser = localStorage.getItem("user");
-      if (!storedUser) {
+    const loadData = async () => {
+      if (!isAuthenticated || !user) {
         toast.error("로그인이 필요합니다.");
         router.push("/login");
         return;
       }
 
-      const user = JSON.parse(storedUser);
-      setUserId(user.id);
-
       try {
         const data = await cardHelpers.getCardById(dataId);
         setCard(data);
-        
+
         // 소유자 확인
-        setIsOwner(data.user_id === user.id);
-        
-        if (data.user_id !== user.id) {
+        const owner = data.user_id === user.id;
+        setIsOwner(owner);
+
+        if (!owner) {
           toast.error("접근 권한이 없습니다.");
           router.push("/data");
           return;
@@ -77,9 +75,9 @@ export default function DataDetailPage() {
     };
 
     if (dataId) {
-      checkAuthAndLoadData();
+      loadData();
     }
-  }, [dataId, router]);
+  }, [dataId, router, isAuthenticated, user]);
 
   // 날짜 포맷팅
   const formatDate = (dateString: string) => {
@@ -96,7 +94,7 @@ export default function DataDetailPage() {
   // 내용 복사
   const handleCopy = async () => {
     if (!card) return;
-    
+
     try {
       await navigator.clipboard.writeText(card.content);
       setCopied(true);
@@ -110,7 +108,7 @@ export default function DataDetailPage() {
   // 문서 삭제
   const handleDelete = async () => {
     if (!card || !isOwner) return;
-    
+
     if (!confirm("정말 이 문서를 삭제하시겠습니까?")) return;
 
     setDeleting(true);
@@ -264,15 +262,15 @@ export default function DataDetailPage() {
                         body: JSON.stringify({
                           cardId: card.id,
                           content: card.content,
-                          userId: userId,
+                          userId: user?.id,
                         }),
                       });
-                      
+
                       if (!response.ok) {
                         const errorData = await response.json();
                         throw new Error(errorData.error || "흐름도 생성 실패");
                       }
-                      
+
                       toast.success("흐름도가 생성되었습니다!");
                       router.push(`/set/${card.id}/flow`);
                     } catch (error: any) {
@@ -296,8 +294,8 @@ export default function DataDetailPage() {
                     </h3>
                   </div>
                   <p className="text-sm text-[#6B6762]">
-                    {generatingFlow 
-                      ? "AI가 역사적 사건을 분석하고 있습니다" 
+                    {generatingFlow
+                      ? "AI가 역사적 사건을 분석하고 있습니다"
                       : "역사적 사건을 시간순으로 정리합니다"}
                   </p>
                 </button>

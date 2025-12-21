@@ -1,39 +1,87 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest, NextResponse } from 'next/server';
+import { supabase } from '@/lib/supabase';
+import { hashPassword } from '@/lib/password';
+import { signToken } from '@/lib/jwt';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE
-
-// 빌드 타임에 환경 변수가 없으면 에러를 던지지 않도록 처리
-let admin: ReturnType<typeof createClient> | null = null;
-
-if (supabaseUrl && supabaseServiceKey) {
-  admin = createClient(supabaseUrl, supabaseServiceKey);
-}
-
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    if (!admin) {
+    const { email, password, user_id } = await request.json();
+
+    // Validate input
+    if (!password || !user_id) {
       return NextResponse.json(
-        { error: 'Supabase configuration is missing' },
+        { message: 'Password and user_id are required' },
+        { status: 400 }
+      );
+    }
+
+    // Check if user already exists
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('*')
+      .eq('user_id', user_id)
+      .single();
+
+    if (existingUser) {
+      return NextResponse.json(
+        { message: 'User already exists' },
+        { status: 409 }
+      );
+    }
+
+    // Hash password
+    const hashedPassword = await hashPassword(password);
+
+    // Create user in database
+    const { data: newUser, error } = await supabase
+      .from('users')
+      .insert({
+        user_id,
+        password: hashedPassword,
+        created_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error || !newUser) {
+      console.error('Signup error:', error);
+      return NextResponse.json(
+        { message: 'Failed to create user' },
         { status: 500 }
       );
     }
 
-    const { email, password, name } = await request.json()
-    const { data, error } = await admin.auth.signUp({ email, password, options: { data: { name } } })
-    if (error) return NextResponse.json({ error }, { status: 400 })
+    // Generate JWT
+    const token = await signToken({
+      userId: newUser.id,
+      email: email || null,
+      user_id: newUser.user_id,
+    });
 
-    // 유저가 만들어지면 users 테이블에 프로필 저장
-    const userId = data?.user?.id
-    if (userId) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (admin as any).from('users').upsert({ id: userId, user_id: name, password: null, created_at: new Date().toISOString() }, { onConflict: 'id' })
-    }
+    // Create response with JWT in HttpOnly cookie
+    const response = NextResponse.json({
+      message: 'Signup successful',
+      user: {
+        id: newUser.id,
+        email: email || null,
+        user_id: newUser.user_id,
+      },
+    });
 
-    return NextResponse.json({ data })
-  } catch (err: unknown) {
-    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-    return NextResponse.json({ error: errorMessage }, { status: 500 })
+    response.cookies.set('auth-token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: '/',
+    });
+
+    return response;
+  } catch (error) {
+    console.error('Signup error:', error);
+    return NextResponse.json(
+      { message: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
