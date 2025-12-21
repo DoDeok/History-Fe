@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { BookOpen, User, LogOut, FileText, Upload } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -48,7 +49,13 @@ export function Header() {
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2 transition-transform hover:scale-105">
-            <BookOpen className="h-6 w-6 text-[#C9B59C]" />
+            <Image 
+              src="/Gemini_Generated_Image_7pw8ta7pw8ta7pw8 1-Photoroom 1.svg"
+              alt="History Logo"
+              width={32}
+              height={32}
+              className="h-8 w-8"
+            />
             <span className="font-bold text-[#2D2A26]">History</span>
           </Link>
           
