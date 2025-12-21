@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { useState, use, useEffect } from "react";
 import { Trophy, Clock, Target } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { HistoryCard } from "@/components/HistoryCard";
@@ -190,7 +191,16 @@ export default function RankingPage({ params }: { params: Promise<{ id: string }
             <div className="inline-block p-4 bg-[#C9B59C]/10 rounded-full mb-4">
               <Trophy className="h-12 w-12 text-[#C9B59C]" />
             </div>
-            <h1 className="text-4xl font-bold mb-2">🏆 랭킹</h1>
+            <h1 className="text-4xl font-bold mb-2 flex items-center justify-center gap-3">
+              <Image 
+                src="/ranking.svg"
+                alt="Ranking Icon"
+                width={40}
+                height={40}
+                className="h-10 w-10"
+              />
+              랭킹
+            </h1>
             <p className="text-[#6B6762]">
               다른 사용자들과 실력을 겨뤄보세요
             </p>

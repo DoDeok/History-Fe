@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { useState, useEffect, use } from "react";
 import { Save, Sparkles, ArrowLeft, Play } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { SecondaryButton } from "@/components/SecondaryButton";
@@ -177,7 +178,14 @@ export default function DataDetailPage({ params }: { params: Promise<{ id: strin
                   onClick={() => router.push(`/set/${id}/flow`)}
                   className="flex items-center gap-2"
                 >
-                  🌊 흐름도 보기
+                  <Image 
+                    src="/flow.svg"
+                    alt="Flow Icon"
+                    width={20}
+                    height={20}
+                    className="h-5 w-5"
+                  />
+                  흐름도 보기
                 </PrimaryButton>
                 <PrimaryButton 
                   onClick={() => router.push(`/game/${id}`)}
@@ -190,7 +198,14 @@ export default function DataDetailPage({ params }: { params: Promise<{ id: strin
                   onClick={() => router.push(`/rank/${id}`)}
                   className="flex items-center gap-2"
                 >
-                  🏆 랭킹 보기
+                  <Image 
+                    src="/ranking.svg"
+                    alt="Ranking Icon"
+                    width={20}
+                    height={20}
+                    className="h-5 w-5"
+                  />
+                  랭킹 보기
                 </SecondaryButton>
               </>
             ) : null}

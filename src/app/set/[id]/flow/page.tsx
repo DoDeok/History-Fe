@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { useState, use, useEffect, useRef } from "react";
 import { ZoomIn, ZoomOut, Maximize2, X, Move, RotateCcw } from "lucide-react";
+import Image from "next/image";
 import { HistoryCard } from "@/components/HistoryCard";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -142,7 +143,9 @@ export default function FlowChartPage({ params }: { params: Promise<{ id: string
         >
           <div className="mb-8 flex justify-between items-center">
             <div>
-              <h1 className="text-4xl font-bold mb-2">🌊 역사 흐름도</h1>
+              <h1 className="text-4xl font-bold mb-2 flex items-center gap-3">
+                역사 흐름도
+              </h1>
               <p className="text-[#6B6762]">
                 사건을 클릭하면 자세한 정보를 볼 수 있어요
               </p>
