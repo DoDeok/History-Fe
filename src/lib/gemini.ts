@@ -3,14 +3,20 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const apiKey = process.env.GEMINI_API_KEY;
 
 if (!apiKey) {
-  throw new Error("GEMINI_API_KEY 환경 변수가 설정되지 않았습니다.");
+  console.error("GEMINI_API_KEY 환경 변수가 설정되지 않았습니다.");
 }
 
-const genAI = new GoogleGenerativeAI(apiKey);
+const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
-export const model = genAI.getGenerativeModel({ 
-  model: "gemini-2.5-flash-lite" 
-});
+// Gemini 2.5 모델 사용
+export const model = genAI?.getGenerativeModel({ 
+  model: "gemini-2.5-flash" 
+}) || null;
+
+// Vision 기능을 위한 모델 (OCR 등)
+export const visionModel = genAI?.getGenerativeModel({ 
+  model: "gemini-2.5-flash" 
+}) || null;
 
 export async function generateQuiz(content: string) {
   const prompt = `다음 역사 자료를 분석하여 퀴즈를 생성하세요.
@@ -78,6 +84,10 @@ JSON 배열로 정확히 5개만 반환:
 4. JSON 배열만 반환, 다른 텍스트 포함 금지`;
 
   try {
+    if (!model) {
+      throw new Error("Gemini API가 설정되지 않았습니다.");
+    }
+    
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
