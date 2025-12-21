@@ -2,16 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuthStore } from '@/store/authStore';
 
 export default function ProfileSetupPage() {
   const router = useRouter();
   const [name, setName] = useState('');
-  const [userId, setUserId] = useState<string | null>(null);
+  const { pendingUserId: userId, setPendingUserId } = useAuthStore();
   const [status, setStatus] = useState('');
 
   useEffect(() => {
-    const id = localStorage.getItem('pending_user_id');
-    setUserId(id);
+    // 스토어에서 이미 초기화됨 (checkAuth/initial)
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -29,7 +29,7 @@ export default function ProfileSetupPage() {
         setStatus('오류: ' + body.error.message || body.error);
         return;
       }
-      localStorage.removeItem('pending_user_id');
+      setPendingUserId(null); // localStorage와 스토어에서 모두 제거
       router.push('/');
     } catch (err: any) {
       setStatus('오류: ' + err.message);

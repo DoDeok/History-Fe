@@ -8,6 +8,7 @@ import { HistoryCard } from "@/components/HistoryCard";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { cardHelpers, supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { useAuthStore } from "@/store/authStore";
 
 interface UserInfo {
   id: string;
@@ -36,7 +37,7 @@ interface GameRecord {
 export default function MyPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<UserInfo | null>(null);
+  const { user, isAuthenticated } = useAuthStore();
   const [myCards, setMyCards] = useState<CardData[]>([]);
   const [gameRecords, setGameRecords] = useState<GameRecord[]>([]);
   const [stats, setStats] = useState({
@@ -47,24 +48,15 @@ export default function MyPage() {
 
   useEffect(() => {
     const loadData = async () => {
-      // 사용자 정보 확인
-      const storedUser = localStorage.getItem("user");
-      if (!storedUser) {
+      if (!isAuthenticated || !user) {
         toast.error("로그인이 필요합니다.");
         router.push("/login");
         return;
       }
 
       try {
-        const userData = JSON.parse(storedUser);
-        setUser({
-          id: userData.id,
-          name: userData.name || "사용자",
-          email: userData.email || "",
-        });
-
         // 내 카드(문서) 가져오기
-        const cards = await cardHelpers.getCardsByUserId(userData.id);
+        const cards = await cardHelpers.getCardsByUserId(user.id);
         setMyCards(cards || []);
 
         // 게임 기록 가져오기
@@ -79,7 +71,7 @@ export default function MyPage() {
               title
             )
           `)
-          .eq("user_id", userData.id)
+          .eq("user_id", user.id)
           .order("created_at", { ascending: false })
           .limit(10);
 
@@ -89,18 +81,18 @@ export default function MyPage() {
 
         // 통계 계산
         const totalCards = cards?.length || 0;
-        
+
         // 게임 플레이 수 계산
         const { count: playCount } = await supabase
           .from("game_records")
           .select("*", { count: "exact", head: true })
-          .eq("user_id", userData.id);
+          .eq("user_id", user.id);
 
         // 정답률 계산
         const { data: correctData } = await supabase
           .from("game_records")
           .select("is_correct")
-          .eq("user_id", userData.id);
+          .eq("user_id", user.id);
 
         let avgScore = 0;
         if (correctData && correctData.length > 0) {
@@ -123,7 +115,7 @@ export default function MyPage() {
     };
 
     loadData();
-  }, [router]);
+  }, [router, isAuthenticated, user]);
 
   // 날짜 포맷팅
   const formatDate = (dateString: string) => {
@@ -170,7 +162,7 @@ export default function MyPage() {
           className="max-w-4xl mx-auto"
         >
           <h1 className="text-4xl font-bold text-center mb-12">마이페이지</h1>
-          
+
           {/* 프로필 카드 */}
           <HistoryCard className="mb-8">
             <div className="flex items-center gap-4">
@@ -178,7 +170,7 @@ export default function MyPage() {
                 <User className="h-10 w-10 text-white" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold mb-1">{user?.name}</h2>
+                <h2 className="text-2xl font-bold mb-1">{user?.user_id}</h2>
                 <p className="text-[#6B6762]">{user?.email}</p>
               </div>
             </div>
@@ -191,13 +183,13 @@ export default function MyPage() {
               <h3 className="text-3xl font-bold mb-1">{stats.totalCards}</h3>
               <p className="text-[#6B6762]">내 문서</p>
             </HistoryCard>
-            
+
             <HistoryCard className="text-center">
               <Trophy className="h-12 w-12 mx-auto mb-2 text-[#C9B59C]" />
               <h3 className="text-3xl font-bold mb-1">{stats.totalPlays}</h3>
               <p className="text-[#6B6762]">총 플레이</p>
             </HistoryCard>
-            
+
             <HistoryCard className="text-center">
               <div className="text-4xl mb-2">📊</div>
               <h3 className="text-3xl font-bold mb-1">{stats.averageScore}%</h3>
@@ -208,7 +200,7 @@ export default function MyPage() {
           {/* 내가 만든 세트 */}
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-bold">내가 만든 문서</h2>
-            <PrimaryButton 
+            <PrimaryButton
               onClick={() => router.push("/transform")}
               className="flex items-center gap-2"
             >
@@ -226,7 +218,7 @@ export default function MyPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4, delay: i * 0.1 }}
                 >
-                  <HistoryCard 
+                  <HistoryCard
                     className="cursor-pointer"
                     onClick={() => router.push(`/data/${card.id}`)}
                   >
@@ -247,7 +239,7 @@ export default function MyPage() {
                       )}
                     </div>
                     <div className="mt-4 pt-4 border-t border-[#EFE9E3]">
-                      <button 
+                      <button
                         onClick={(e) => {
                           e.stopPropagation();
                           router.push(`/data/${card.id}`);
@@ -266,7 +258,7 @@ export default function MyPage() {
               <div className="text-6xl mb-4">📚</div>
               <h3 className="text-xl font-semibold mb-2">아직 만든 문서가 없어요</h3>
               <p className="text-[#6B6762] mb-6">학습지를 업로드하고 문서를 만들어보세요!</p>
-              <PrimaryButton 
+              <PrimaryButton
                 onClick={() => router.push("/transform")}
                 className="inline-flex items-center gap-2"
               >

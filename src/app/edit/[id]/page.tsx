@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { 
-  FileText, 
-  ArrowLeft, 
-  Save, 
+import {
+  FileText,
+  ArrowLeft,
+  Save,
   Loader2,
   RotateCcw
 } from "lucide-react";
@@ -13,6 +13,7 @@ import { useRouter, useParams } from "next/navigation";
 import { HistoryCard } from "@/components/HistoryCard";
 import { toast } from "sonner";
 import { cardHelpers } from "@/lib/supabase";
+import { useAuthStore } from "@/store/authStore";
 
 interface Card {
   id: string;
@@ -27,7 +28,7 @@ export default function EditPage() {
   const router = useRouter();
   const params = useParams();
   const dataId = params?.id as string;
-  
+
   const [card, setCard] = useState<Card | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -35,25 +36,21 @@ export default function EditPage() {
   const [content, setContent] = useState("");
   const [originalTitle, setOriginalTitle] = useState("");
   const [originalContent, setOriginalContent] = useState("");
-  const [userId, setUserId] = useState<string | null>(null);
+  const { user, isAuthenticated } = useAuthStore();
   const [hasChanges, setHasChanges] = useState(false);
 
   // 사용자 인증 확인 및 데이터 로드
   useEffect(() => {
-    const checkAuthAndLoadData = async () => {
-      const storedUser = localStorage.getItem("user");
-      if (!storedUser) {
+    const loadData = async () => {
+      if (!isAuthenticated || !user) {
         toast.error("로그인이 필요합니다.");
         router.push("/login");
         return;
       }
 
-      const user = JSON.parse(storedUser);
-      setUserId(user.id);
-
       try {
         const data = await cardHelpers.getCardById(dataId);
-        
+
         // 소유자 확인
         if (data.user_id !== user.id) {
           toast.error("접근 권한이 없습니다.");
@@ -76,9 +73,9 @@ export default function EditPage() {
     };
 
     if (dataId) {
-      checkAuthAndLoadData();
+      loadData();
     }
-  }, [dataId, router]);
+  }, [dataId, router, isAuthenticated, user]);
 
   // 변경사항 감지
   useEffect(() => {
@@ -88,7 +85,7 @@ export default function EditPage() {
   // 저장
   const handleSave = async () => {
     if (!card) return;
-    
+
     if (!title.trim()) {
       toast.error("제목을 입력해주세요.");
       return;
@@ -109,7 +106,7 @@ export default function EditPage() {
       setOriginalTitle(title.trim());
       setOriginalContent(content.trim());
       toast.success("문서가 저장되었습니다.");
-      
+
       // 상세 페이지로 이동
       router.push(`/data/${card.id}`);
     } catch (error) {
@@ -123,7 +120,7 @@ export default function EditPage() {
   // 초기화
   const handleReset = () => {
     if (!confirm("변경사항을 취소하시겠습니까?")) return;
-    
+
     setTitle(originalTitle);
     setContent(originalContent);
     toast.info("변경사항이 취소되었습니다.");

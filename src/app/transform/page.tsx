@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { HistoryCard } from "@/components/HistoryCard";
 import { toast } from "sonner";
 import { cardHelpers } from "@/lib/supabase";
+import { useAuthStore } from "@/store/authStore";
 
 export default function TransformPage() {
   const router = useRouter();
@@ -15,24 +16,16 @@ export default function TransformPage() {
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<"idle" | "uploading" | "processing" | "saving" | "complete">("idle");
   const [extractedContent, setExtractedContent] = useState<string>("");
-  const [userId, setUserId] = useState<string | null>(null);
+  const { user, isAuthenticated } = useAuthStore();
   const [dragActive, setDragActive] = useState(false);
 
   // 사용자 인증 확인
   useEffect(() => {
-    const checkAuth = async () => {
-      // localStorage에서 사용자 정보 확인 (기존 인증 방식에 맞춤)
-      const storedUser = localStorage.getItem("user");
-      if (storedUser) {
-        const user = JSON.parse(storedUser);
-        setUserId(user.id);
-      } else {
-        toast.error("로그인이 필요합니다.");
-        router.push("/login");
-      }
-    };
-    checkAuth();
-  }, [router]);
+    if (!isAuthenticated || !user) {
+      toast.error("로그인이 필요합니다.");
+      router.push("/login");
+    }
+  }, [router, isAuthenticated, user]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -86,7 +79,7 @@ export default function TransformPage() {
   };
 
   const handleUpload = async (selectedFile: File) => {
-    if (!userId) {
+    if (!user?.id) {
       toast.error("로그인이 필요합니다.");
       router.push("/login");
       return;
@@ -100,14 +93,14 @@ export default function TransformPage() {
       // 1단계: 파일 업로드 진행
       setProgress(20);
       setStatus("uploading");
-      
+
       const formData = new FormData();
       formData.append("file", selectedFile);
 
       // 2단계: OCR 처리
       setProgress(40);
       setStatus("processing");
-      
+
       const response = await fetch("/api/ocr", {
         method: "POST",
         body: formData,
@@ -120,7 +113,7 @@ export default function TransformPage() {
 
       const result = await response.json();
       setProgress(70);
-      
+
       setExtractedContent(result.content);
 
       // 3단계: Supabase에 저장
@@ -130,7 +123,7 @@ export default function TransformPage() {
       const newCard = await cardHelpers.createCard({
         title: result.suggestedTitle,
         content: result.content,
-        user_id: userId,
+        user_id: user?.id || "",
         isQuiz: false,
       });
 
@@ -200,7 +193,7 @@ export default function TransformPage() {
           <p className="text-center text-[#6B6762] mb-8">
             학습지를 업로드하면 AI가 자동으로 텍스트를 추출합니다
           </p>
-          
+
           {/* 지원 형식 안내 */}
           <div className="flex justify-center gap-4 mb-6">
             <div className="flex items-center gap-2 text-sm text-[#6B6762]">
@@ -212,15 +205,14 @@ export default function TransformPage() {
               <span>PDF</span>
             </div>
           </div>
-          
+
           <HistoryCard>
             {!uploading ? (
               <div
-                className={`flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-lg transition-colors ${
-                  dragActive
-                    ? "border-[#C9B59C] bg-[#C9B59C]/10"
-                    : "border-[#EFE9E3]"
-                }`}
+                className={`flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-lg transition-colors ${dragActive
+                  ? "border-[#C9B59C] bg-[#C9B59C]/10"
+                  : "border-[#EFE9E3]"
+                  }`}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
                 onDragOver={handleDrag}
@@ -277,7 +269,7 @@ export default function TransformPage() {
                         />
                       </div>
                     </div>
-                    
+
                     {/* 취소 버튼 */}
                     <button
                       onClick={resetUpload}

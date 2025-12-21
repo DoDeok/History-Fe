@@ -9,6 +9,7 @@ import { PrimaryButton } from "@/components/PrimaryButton";
 import { HistoryCard } from "@/components/HistoryCard";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { useAuthStore } from "@/store/authStore";
 
 interface RankingEntry {
   rank?: number;
@@ -26,6 +27,7 @@ export default function RankingPage({ params }: { params: Promise<{ id: string }
   const { id } = use(params);
   const [rankings, setRankings] = useState<RankingEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user: currentUser } = useAuthStore();
   const [myStats, setMyStats] = useState<{ bestScore: number; playCount: number }>({
     bestScore: 0,
     playCount: 0,
@@ -34,17 +36,7 @@ export default function RankingPage({ params }: { params: Promise<{ id: string }
   useEffect(() => {
     const fetchRankings = async () => {
       try {
-        // 현재 사용자 정보 가져오기
-        const authToken = localStorage.getItem('sb-yfbxdujtplybaftbbmel-auth-token');
-        let currentUserId = null;
-        if (authToken) {
-          try {
-            const authData = JSON.parse(authToken);
-            currentUserId = authData.user?.id;
-          } catch (e) {
-            console.error("토큰 파싱 오류:", e);
-          }
-        }
+        const currentUserId = currentUser?.id;
 
         // 전체 퀴즈 수 가져오기
         const { data: quizData, error: quizError } = await supabase
@@ -71,7 +63,7 @@ export default function RankingPage({ params }: { params: Promise<{ id: string }
 
         // 사용자별 정답 수 집계
         const userScores = new Map<string, { correct: number; total: number; created_at: string }>();
-        
+
         if (recordData) {
           recordData.forEach((record: any) => {
             const existing = userScores.get(record.user_id);
@@ -144,7 +136,7 @@ export default function RankingPage({ params }: { params: Promise<{ id: string }
           const myCorrect = myRecords.filter((r: any) => r.is_correct).length;
           const myTotal = myRecords.length;
           const percentage = myTotal > 0 ? Math.round((myCorrect / myTotal) * 100) : 0;
-          
+
           setMyStats({
             bestScore: percentage,
             playCount: myTotal > 0 ? Math.floor(myTotal / totalQuizzes) : 0,
@@ -159,7 +151,7 @@ export default function RankingPage({ params }: { params: Promise<{ id: string }
     };
 
     fetchRankings();
-  }, [id]);
+  }, [id, currentUser]);
 
   const getMedalIcon = (rank: number) => {
     if (rank === 1) return "🥇";
@@ -192,7 +184,7 @@ export default function RankingPage({ params }: { params: Promise<{ id: string }
               <Trophy className="h-12 w-12 text-[#C9B59C]" />
             </div>
             <h1 className="text-4xl font-bold mb-2 flex items-center justify-center gap-3">
-              <Image 
+              <Image
                 src="/ranking.svg"
                 alt="Ranking Icon"
                 width={40}
@@ -236,60 +228,59 @@ export default function RankingPage({ params }: { params: Promise<{ id: string }
               <div className="space-y-2">
                 {rankings.map((entry, index) => (
                   <motion.div
-                  key={entry.rank}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className={`flex items-center gap-4 p-4 rounded-lg transition-all ${
-                    entry.isMe
-                      ? "bg-[#C9B59C]/10 border-2 border-[#C9B59C]"
-                      : "bg-[#EFE9E3] hover:bg-[#DAD0C7]"
-                  }`}
-                >
-                  {/* Rank */}
-                  <div className="flex-shrink-0 w-12 text-center">
-                    {entry.rank && getMedalIcon(entry.rank) ? (
-                      <span className="text-3xl">{getMedalIcon(entry.rank)}</span>
-                    ) : (
-                      <span className="text-lg font-bold text-[#6B6762]">
-                        {entry.rank}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Name */}
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className={`font-medium ${entry.isMe ? "text-[#C9B59C]" : ""}`}>
-                        {entry.name}
-                      </span>
-                      {entry.isMe && (
-                        <span className="px-2 py-0.5 bg-[#C9B59C] text-white text-xs rounded-full">
-                          나
+                    key={entry.rank}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className={`flex items-center gap-4 p-4 rounded-lg transition-all ${entry.isMe
+                        ? "bg-[#C9B59C]/10 border-2 border-[#C9B59C]"
+                        : "bg-[#EFE9E3] hover:bg-[#DAD0C7]"
+                      }`}
+                  >
+                    {/* Rank */}
+                    <div className="flex-shrink-0 w-12 text-center">
+                      {entry.rank && getMedalIcon(entry.rank) ? (
+                        <span className="text-3xl">{getMedalIcon(entry.rank)}</span>
+                      ) : (
+                        <span className="text-lg font-bold text-[#6B6762]">
+                          {entry.rank}
                         </span>
                       )}
                     </div>
-                  </div>
 
-                  {/* Stats */}
-                  <div className="hidden sm:flex items-center gap-6 text-sm text-[#6B6762]">
-                    <div className="flex items-center gap-1">
-                      <Target className="h-4 w-4" />
-                      <span>{entry.percentage}%</span>
+                    {/* Name */}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className={`font-medium ${entry.isMe ? "text-[#C9B59C]" : ""}`}>
+                          {entry.name}
+                        </span>
+                        {entry.isMe && (
+                          <span className="px-2 py-0.5 bg-[#C9B59C] text-white text-xs rounded-full">
+                            나
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <span>{entry.score}/{entry.total}</span>
-                    </div>
-                  </div>
 
-                  {/* Score */}
-                  <div className="flex-shrink-0">
-                    <span className="text-xl font-bold text-[#C9B59C]">
-                      {entry.percentage}%
-                    </span>
-                  </div>
-                </motion.div>
-              ))}
+                    {/* Stats */}
+                    <div className="hidden sm:flex items-center gap-6 text-sm text-[#6B6762]">
+                      <div className="flex items-center gap-1">
+                        <Target className="h-4 w-4" />
+                        <span>{entry.percentage}%</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span>{entry.score}/{entry.total}</span>
+                      </div>
+                    </div>
+
+                    {/* Score */}
+                    <div className="flex-shrink-0">
+                      <span className="text-xl font-bold text-[#C9B59C]">
+                        {entry.percentage}%
+                      </span>
+                    </div>
+                  </motion.div>
+                ))}
               </div>
             )}
           </HistoryCard>

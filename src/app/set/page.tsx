@@ -8,6 +8,7 @@ import { HistoryCard } from "@/components/HistoryCard";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { useAuthStore } from "@/store/authStore";
 
 interface Card {
   id: string;
@@ -22,19 +23,9 @@ export default function SetListPage() {
   const [filter, setFilter] = useState<"latest" | "popular">("latest");
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const { user } = useAuthStore();
 
   useEffect(() => {
-    // 로컬스토리지에서 사용자 정보 가져오기
-    const authToken = localStorage.getItem('sb-yfbxdujtplybaftbbmel-auth-token');
-    if (authToken) {
-      try {
-        const authData = JSON.parse(authToken);
-        setCurrentUserId(authData.user?.id || null);
-      } catch (error) {
-        console.error("로컬스토리지 파싱 오류:", error);
-      }
-    }
 
     // cards 테이블에서 데이터 가져오기
     const fetchCards = async () => {
@@ -82,7 +73,7 @@ export default function SetListPage() {
                 학습지를 관리하고 문제를 생성하세요
               </p>
             </div>
-            <PrimaryButton 
+            <PrimaryButton
               onClick={() => router.push("/transform")}
               className="flex items-center gap-2"
             >
@@ -95,11 +86,10 @@ export default function SetListPage() {
           <div className="flex gap-3 mb-8">
             <button
               onClick={() => setFilter("latest")}
-              className={`px-4 py-2 rounded-lg transition-all ${
-                filter === "latest"
+              className={`px-4 py-2 rounded-lg transition-all ${filter === "latest"
                   ? "bg-[#C9B59C] text-white"
                   : "bg-[#EFE9E3] text-[#6B6762] hover:bg-[#DAD0C7]"
-              }`}
+                }`}
             >
               <span className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />
@@ -108,11 +98,10 @@ export default function SetListPage() {
             </button>
             <button
               onClick={() => setFilter("popular")}
-              className={`px-4 py-2 rounded-lg transition-all ${
-                filter === "popular"
+              className={`px-4 py-2 rounded-lg transition-all ${filter === "popular"
                   ? "bg-[#C9B59C] text-white"
                   : "bg-[#EFE9E3] text-[#6B6762] hover:bg-[#DAD0C7]"
-              }`}
+                }`}
             >
               <span className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4" />
@@ -153,8 +142,8 @@ export default function SetListPage() {
                       <button className="w-full py-2 bg-[#C9B59C] text-white rounded-lg hover:bg-[#B8A78B] transition-colors text-sm mb-2">
                         자세히 보기
                       </button>
-                      {!card.isQuiz && currentUserId === card.user_id && (
-                        <button 
+                      {!card.isQuiz && user?.id === card.user_id && (
+                        <button
                           onClick={(e) => {
                             e.stopPropagation();
                             router.push(`/set/${card.id}/makeCard`);
